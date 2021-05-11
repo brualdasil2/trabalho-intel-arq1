@@ -12,21 +12,120 @@ BS  equ 8
 ; ============
 ;| VARIAVEIS  |
 ; ============
-string  db  "hello world", CR, LF, 0
+
+l1Board db  "+--1--2--3--4--5--6--7--+", 0
+l2Board db  "|                       |", 0
+l3Board db  "+-----------------------+", 0
+boardPos db "AAAxVVV"
+charPiece db "x", 0
+
 stringDigitada  db  100 dup(?)
 ptString    dw  0
 
     .code
     .startup
-    
-
-
+    call reset
+    call drawBoard
+    call drawPieces
+    mov dl, 0
+    mov dh, 15
+    call setCursor
 
     .exit
 
 ; ============
 ;| SUBROTINAS |
 ; ============
+reset PROC near
+    ;inicialização de variaveis
+
+    ;modo de tela
+    call clearScreen
+
+
+    ret
+reset ENDP
+
+drawBoard proc near
+    mov dh, 5
+    mov dl, 20
+    call setCursor
+    lea bx, l1Board
+    call printf
+    mov dh, 6
+    mov dl, 20
+    call setCursor
+    lea bx, l2Board
+    call printf
+    mov dh, 7
+    mov dl, 20
+    call setCursor
+    lea bx, l2Board
+    call printf
+    mov dh, 8
+    mov dl, 20
+    call setCursor
+    lea bx, l2Board
+    call printf
+    mov dh, 9
+    mov dl, 20
+    call setCursor
+    lea bx, l3Board
+    call printf
+    ret
+drawBoard endp
+
+drawPieces proc near
+    mov dl, 20
+    mov cx, 7
+    lea bp, boardPos
+    mov si, 0
+loopDrawPieces:
+    mov dh, 7
+    add dl, 3
+    push dx
+    push si
+    call setCursor
+    lea di, charPiece
+    mov al, [bp+si]
+    cmp al, 'x'
+    jne  skipDot
+    mov al, '.'
+skipDot:
+    mov [di], al   ;charPiece[0] = boardPos[si]
+    lea bx, charPiece
+    call printf         ;printf charPiece
+    pop si
+    pop dx
+    inc si
+    loop loopDrawPieces
+    ret
+drawPieces endp
+
+clearScreen proc near
+    mov ah, 0
+    mov al, 07h
+    int 10h
+    ret
+clearScreen endp
+
+;	mov		dh,linha
+;	mov		dl,coluna
+;	call	SetCursor
+setCursor   proc	near
+	mov	ah,2
+	mov	bh,0
+	int	10h
+	ret
+setCursor	endp
+
+;retorna em al o char lido
+getKey	proc	near
+	mov		ah,7
+	int		21H
+	ret
+getKey	endp
+
 ;lea bx, string
 ;call printf
 printf PROC near
