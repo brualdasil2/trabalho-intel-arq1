@@ -9,6 +9,7 @@ CR  equ 13
 LF  equ 10
 BS  equ 8
 
+
 ; ============
 ;| VARIAVEIS  |
 ; ============
@@ -16,8 +17,17 @@ BS  equ 8
 l1Board db  "+--1--2--3--4--5--6--7--+", 0
 l2Board db  "|                       |", 0
 l3Board db  "+-----------------------+", 0
+playInstruct1 db "1-7 - Movimentacao de pecas.", CR, LF, 0
+playInstruct2 db "Z   - Recomecar o jogo.", CR, LF, 0
+playInstruct3 db "R   - Ler arquivo de jogo.", CR, LF, 0
+playInstruct4 db "G   - Gravar arquivo de jogo", CR, LF, 0
+invalidMoveMsg db "Movimento invalido!", 0
+youLoseMsg db "Voce perdeu!", 0
 boardPos db "AAAxVVV"
+boardInitPos db "AAAxVVV"
 charPiece db "x", 0
+replaying db 0
+recording db 0
 
 stringDigitada  db  100 dup(?)
 ptString    dw  0
@@ -25,12 +35,53 @@ ptString    dw  0
     .code
     .startup
     call reset
+startRound:
     call drawBoard
     call drawPieces
     mov dl, 0
     mov dh, 15
     call setCursor
+    lea bx, playInstruct1
+    call printf
+    lea bx, playInstruct2
+    call printf
+    lea bx, playInstruct3
+    call printf
+    lea bx, playInstruct4
+    call printf
 
+    call getKey
+    push ax
+    call clearScreen
+    pop ax
+    cmp al, 'z'
+    je  restartGame
+    cmp al, 'Z'
+    je  restartGame
+    cmp al, 'r'
+    je  replayGame
+    cmp al, 'R'
+    je  replayGame
+    cmp al, 'g'
+    je  recordGame
+    cmp al, 'G'
+    je  recordGame
+    cmp al, '1'
+    jl  ignoreKey
+    cmp al, '7'
+    jg  ignoreKey
+    sub al, 31h
+    mov ah, 0
+    call movePiece
+    jmp startRound
+restartGame:
+
+replayGame:
+
+recordGame:
+
+ignoreKey:
+    jmp startRound
     .exit
 
 ; ============
@@ -45,6 +96,60 @@ reset PROC near
 
     ret
 reset ENDP
+
+movePiece proc near
+    lea bp, boardPos
+    mov si, ax
+    cmp [bp+si], byte ptr 'A'
+    je  moveA
+    cmp [bp+si], byte ptr 'V'
+    je  moveV
+    jmp invalidMove
+moveA:
+    cmp [bp+si+1], byte ptr 'x'
+    je  moveAone
+    cmp [bp+si+1], byte ptr 'V'
+    je  skipA1
+    jmp invalidMove
+moveAone:
+    mov [bp+si], byte ptr 'x'
+    mov [bp+si+1], byte ptr 'A'
+    ret
+skipA1:
+    cmp [bp+si+2], byte ptr 'x'
+    je  skipA2
+    jmp invalidMove
+skipA2:
+    mov [bp+si], byte ptr 'x'
+    mov [bp+si+2], byte ptr 'A'
+    ret
+moveV:
+    cmp [bp+si-1], byte ptr 'x'
+    je  moveVone
+    cmp [bp+si-1], byte ptr 'A'
+    je  skipV1
+    jmp invalidMove
+moveVone:
+    mov [bp+si], byte ptr 'x'
+    mov [bp+si-1], byte ptr 'V'
+    ret
+skipV1:
+    cmp [bp+si-2], byte ptr 'x'
+    je  skipV2
+    jmp invalidMove
+skipV2:
+    mov [bp+si], byte ptr 'x'
+    mov [bp+si-2], byte ptr 'V'
+    ret
+
+invalidMove:
+    mov dl, 0
+    mov dh, 20
+    call setCursor
+    lea bx, invalidMoveMsg
+    call printf
+    ret
+movePiece endp
 
 drawBoard proc near
     mov dh, 5
