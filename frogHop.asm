@@ -22,8 +22,9 @@ playInstruct2 db "Z   - Recomecar o jogo.", CR, LF, 0
 playInstruct3 db "R   - Ler arquivo de jogo.", CR, LF, 0
 playInstruct4 db "G   - Gravar arquivo de jogo", CR, LF, 0
 invalidMoveMsg db "Movimento invalido!", 0
-youLoseMsg db "Voce perdeu!", 0
-boardPos db "AAAxVVV"
+youWinMsg  db "Voce VENCEU! Pressione qualquer tecla pra recomecar.", 0
+youLoseMsg db "Voce PERDEU! Pressione qualquer tecla pra recomecar.", 0
+boardPos db 7 dup(0)
 boardInitPos db "AAAxVVV"
 charPiece db "x", 0
 replaying db 0
@@ -41,6 +42,27 @@ startRound:
     mov dl, 0
     mov dh, 15
     call setCursor
+    call checkWinLoss
+    cmp ax, 1
+    je  victory
+    cmp ax, 2
+    je  loss
+    jmp keepPlaying
+victory:
+    lea bx, youWinMsg
+    call printf
+    call getKey
+    call reset
+    jmp startRound
+loss:
+    lea bx, youLoseMsg
+    call printf
+    call getKey
+    call reset
+    jmp startRound
+
+
+keepPlaying:
     lea bx, playInstruct1
     call printf
     lea bx, playInstruct2
@@ -49,6 +71,7 @@ startRound:
     call printf
     lea bx, playInstruct4
     call printf
+
 
     call getKey
     push ax
@@ -75,6 +98,8 @@ startRound:
     call movePiece
     jmp startRound
 restartGame:
+    call reset
+    jmp startRound
 
 replayGame:
 
@@ -89,6 +114,17 @@ ignoreKey:
 ; ============
 reset PROC near
     ;inicialização de variaveis
+
+    lea si, boardInitPos
+    lea di, boardPos
+    mov cx, 7
+    mov bp, 0
+loopResetBoard:
+    mov al, byte ptr [si+bp]
+    mov [di+bp], al
+    inc bp
+    loop loopResetBoard
+
 
     ;modo de tela
     call clearScreen
@@ -150,6 +186,65 @@ invalidMove:
     call printf
     ret
 movePiece endp
+
+checkWinLoss proc near
+    lea bp, boardPos
+    mov si, 0
+    mov cx, 7
+
+loopCheckValid:
+    cmp [bp+si], byte ptr 'A'
+    je  CmoveA
+    cmp [bp+si], byte ptr 'V'
+    je  CmoveV
+    jmp CinvalidMove
+CmoveA:
+    cmp [bp+si+1], byte ptr 'x'
+    je  CvalidMove
+    cmp [bp+si+1], byte ptr 'V'
+    je  CskipA1
+    jmp CinvalidMove
+CskipA1:
+    cmp [bp+si+2], byte ptr 'x'
+    je  CvalidMove
+    jmp CinvalidMove
+CmoveV:
+    cmp [bp+si-1], byte ptr 'x'
+    je  CvalidMove
+    cmp [bp+si-1], byte ptr 'A'
+    je  CskipV1
+    jmp CinvalidMove
+CskipV1:
+    cmp [bp+si-2], byte ptr 'x'
+    je  CvalidMove
+    jmp CinvalidMove
+
+CvalidMove:
+    mov ax, 0
+    ret
+
+CinvalidMove:
+    inc si
+    loop loopCheckValid
+    lea bp, boardPos
+    cmp [bp], byte ptr 'V'
+    jne lostGame
+    cmp [bp+1], byte ptr 'V'
+    jne lostGame
+    cmp [bp+2], byte ptr 'V'
+    jne lostGame
+    cmp [bp+4], byte ptr 'A'
+    jne lostGame
+    cmp [bp+5], byte ptr 'A'
+    jne lostGame
+    cmp [bp+6], byte ptr 'A'
+    jne lostGame
+    mov ax, 1
+    ret
+lostGame:
+    mov ax, 2
+    ret
+checkWinLoss endp
 
 drawBoard proc near
     mov dh, 5
