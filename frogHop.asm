@@ -16,6 +16,9 @@ ESCAPECHAR equ 27
 ; ============
 
 newLine db CR, LF, 0
+l1Data db "             Arquitetura e Organizacao de Computadores I", CR, LF, 0
+l2Data db "                   Trabalho do INTEL - 2020/2",CR, LF, 0
+l3Data db "             Bruno Almeida da Silveira - Cartao 00323753", CR, LF, 0
 l1Board db  "+--1--2--3--4--5--6--7--+", 0
 l2Board db  "|                       |", 0
 l3Board db  "+-----------------------+", 0
@@ -26,7 +29,7 @@ playInstruct4 db "G   - Gravar arquivo de jogo", CR, LF, 0
 replayInstruct1 db "N - Proximo movimento", CR, LF, 0
 replayInstruct2 db "Outras teclas - encerra leitura", CR, LF, 0
 replayInstruct3 db "Tecla lida: ", 0
-recordInstruct1 db "ESC - encerrar a gravacao", CR, LF
+recordInstruct1 db "ESC - encerrar a gravacao", 0, CR, LF
 confirmExitRecordMsg db "Encerrar a gravacao? (S/N)", 0
 requestFileNameMsg db "Digite o nome do arquivo:", CR, LF, 0
 invalidMoveMsg db "Movimento invalido!", 0
@@ -54,6 +57,7 @@ ptString    dw  0
     .startup
     call reset
 startRound:
+    call drawData   ;escreve dados do trabalho
     call drawBoard  ;desenha tabuleiro e pecas
     call drawPieces
     mov dl, 0
@@ -69,18 +73,34 @@ victory:
     lea bx, youWinMsg
     call printf
     call getKey     ;espera qualquer tecla pra reiniciar
+    cmp recording, 0
+    je  skipCloseFileV
+    mov dl, '0'
+    mov bx, fileHandle
+    call fPutChar
+    mov bx, fileHandle
+    call fclose
+skipCloseFileV:
     call reset
     jmp startRound
 loss:
     lea bx, youLoseMsg
     call printf
     call getKey     ;espera qualquer tecla pra reiniciar
+    cmp recording, 0
+    je  skipCloseFileL
+    mov dl, '0'
+    mov bx, fileHandle
+    call fPutChar
+    mov bx, fileHandle
+    call fclose
+skipCloseFileL:
     call reset
     jmp startRound
 
 
 keepPlaying:
-    cmp replaying, 1    ;testa se está dando replay ou gravando
+    cmp replaying, 1    ;testa se está dando replay
     je  replayPreMove
     jmp normalPlay
 replayPreMove:
@@ -99,8 +119,11 @@ replayPreMove:
     inc replayMovesIndex    ;incrementa indice do movimento
     push ax
     mov replayMoveMade, bl
+    cmp bp, 0
+    je  skipPrintLastMove 
     lea bx, replayMoveMade  ;exibe na tela o ultimo movimento realizado
     call printf 
+skipPrintLastMove:
     call getKey     ;aguarda tecla N
     cmp al, 'N'
     je  continueReplay
@@ -155,6 +178,14 @@ yesEndRec:
 noEndRec:
     jmp startRound
 normalPlay:
+    cmp recording, 0
+    je  skipRecordingInstructs
+    lea bx, playInstruct1
+    call printf
+    lea bx, recordInstruct1
+    call printf
+    jmp skipNormalInstructs
+skipRecordingInstructs:
     lea bx, playInstruct1   ;exibe instrucoes na tela
     call printf
     lea bx, playInstruct2
@@ -163,7 +194,7 @@ normalPlay:
     call printf
     lea bx, playInstruct4
     call printf
-
+skipNormalInstructs:
 
     call getKey     ;recebe tecla do usuario
     push ax
@@ -231,6 +262,7 @@ erroReadFile:
     lea bx, openFileErrorMsg    ;mensagem de erro de abertura
     call printf
     call getKey
+    call clearScreen
     jmp startRound
 recordGame:
     mov dl, 0   ;posiciona o cursor
@@ -253,6 +285,11 @@ ignoreKey:
 ; ============
 reset PROC near
     ;inicialização de variaveis
+    mov readMovesIndex, 0
+    mov replayMovesIndex, 0
+    mov fileHandle, 0
+    mov replaying, 0
+    mov recording, 0
 
     lea si, boardInitPos    ;deixa tabuleiro na posicao inicial
     lea di, boardPos
@@ -508,6 +545,19 @@ lostGame:
     mov ax, 2
     ret
 checkWinLoss endp
+
+drawData proc near 
+    mov dl, 0
+    mov dh, 0      ;ajusta cursor
+    call setCursor
+    lea bx, l1Data
+    call printf
+    lea bx, l2Data
+    call printf
+    lea bx, l3Data
+    call printf
+    ret
+drawData endp
 
 ;imprime na tela o retangulo do tabuleiro vazio
 drawBoard proc near
