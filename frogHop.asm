@@ -74,7 +74,7 @@ victory:
     call printf
     call getKey     ;espera qualquer tecla pra reiniciar
     cmp recording, 0
-    je  skipCloseFileV
+    je  skipCloseFileV  ;se tava gravando, bota o 0 no fim e fecha arquivo
     mov dl, '0'
     mov bx, fileHandle
     call fPutChar
@@ -88,7 +88,7 @@ loss:
     call printf
     call getKey     ;espera qualquer tecla pra reiniciar
     cmp recording, 0
-    je  skipCloseFileL
+    je  skipCloseFileL  ;se tava gravando, bota o 0 no fim e fecha arquivo
     mov dl, '0'
     mov bx, fileHandle
     call fPutChar
@@ -119,7 +119,7 @@ replayPreMove:
     inc replayMovesIndex    ;incrementa indice do movimento
     push ax
     mov replayMoveMade, bl
-    cmp bp, 0
+    cmp bp, 0               ;se nenhum movimento foi feito (indice 0), nao imprime o movimento passado
     je  skipPrintLastMove 
     lea bx, replayMoveMade  ;exibe na tela o ultimo movimento realizado
     call printf 
@@ -129,7 +129,7 @@ skipPrintLastMove:
     je  continueReplay
     cmp al, 'n'
     je continueReplay
-    jmp exitReplay
+    jmp exitReplay  ;qualquer outra tecla, sai
 continueReplay:
     call clearScreen
     pop ax
@@ -145,7 +145,7 @@ exitReplay:
     call printf 
     lea bx, endReplayMsg
     call printf 
-    call getKey
+    call getKey         ;espera tecla pra sair
     mov replaying, 0    ;sai do modo replay
     call clearScreen
     mov bx, fileHandle
@@ -153,10 +153,10 @@ exitReplay:
 	int	21h
     jmp startRound
 checkEndRecording:
-    lea bx, confirmExitRecordMsg
+    lea bx, confirmExitRecordMsg    ;confirmação de saida
     call printf
 repeatYesNo:
-    call getKey
+    call getKey     ;se 's', sai da gravacao, se 'n', segue gravando
     cmp al, 's'
     je  yesEndRec
     cmp al, 'S'
@@ -165,14 +165,14 @@ repeatYesNo:
     je  noEndRec 
     cmp al, 'N'
     je  noEndRec
-    jmp repeatYesNo
+    jmp repeatYesNo ;repete até ser digitado S ou N
 yesEndRec:
-    mov dl, '0'
+    mov dl, '0'     ;coloca 0 no fim do arquivo, e fecha
     mov bx, fileHandle
     call fPutChar
     mov bx, fileHandle
     call fclose
-    mov recording, 0
+    mov recording, 0    ;sai do modo gravando
     call clearScreen
     jmp startRound
 noEndRec:
@@ -180,8 +180,8 @@ noEndRec:
 normalPlay:
     cmp recording, 0
     je  skipRecordingInstructs
-    lea bx, playInstruct1
-    call printf
+    lea bx, playInstruct1   ;exibe instrucoes de gravacao na tela
+    call printf 
     lea bx, recordInstruct1
     call printf
     jmp skipNormalInstructs
@@ -200,11 +200,11 @@ skipNormalInstructs:
     push ax
     call clearScreen
     pop ax
-    cmp recording, 0
+    cmp recording, 0    ;se esta gravando, testa o char ESC
     je  skipEsc
     cmp al, ESCAPECHAR
     je  checkEndRecording
-    jmp skipNotNumbers
+    jmp skipNotNumbers  ;se está gravando, pula o teste de comandos do jogar (z, r, g)
 skipEsc:
     cmp al, 'z'     ;testa se é um numero ou uma tecla de comando
     je  restartGame
@@ -224,7 +224,7 @@ skipNotNumbers:
     cmp al, '7'
     jg  ignoreKey
     cmp recording, 0
-    je  skipRecordMove
+    je  skipRecordMove  ;se esta gravando, grava movimento no arquivo
     mov bx, fileHandle
     mov dl, al
     push ax
@@ -315,19 +315,20 @@ loopMoveArea:
     ret
 moveByteArea endp
 
+;cria um arquivo com nome em dx e escreve a posicao atual do tabuleiro na primeira linha
 createFile proc near  
     mov ah, 3ch
     mov cx, 0
     int 21h 
     mov fileHandle, ax
     jnc continue1CF
-    mov ax, 1
+    mov ax, 1   
     ret
 continue1CF:
     mov cx, 7
     lea si, boardPos
     mov bp, 0
-loopWritePosFile:
+loopWritePosFile:       ;escreve posicao atual do taubuleiro
     mov bx, fileHandle
     mov dl, byte ptr [si+bp]
     call fPutChar
@@ -343,6 +344,7 @@ loopWritePosFile:
     ret
 createFile endp
 
+;fecha arquivo com fileHandle em bx
 fclose	proc	near
 	mov	ah, 3eh
 	int	21h
